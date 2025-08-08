@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import session from 'express-session';
@@ -8,7 +8,10 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import hpp from 'hpp';
-import db from './config/sequelize'; // Adjust path
+import path from 'path';
+import fs from 'fs';
+
+import db from './config/sequelize'; // Adjust path if needed
 import routes from './routes/index';
 import { errorMiddleware } from "./middleware/error";
 import morganMiddleware from './logger/morganLogger';
@@ -18,6 +21,13 @@ dotenv.config();
 const app = express();
 const port = parseInt(process.env.PORT || '8080', 10);
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+  console.log('Uploads folder created');
+}
 
 // Middleware setup
 app.use(morganMiddleware);
@@ -32,45 +42,44 @@ app.use(express.urlencoded({ extended: true }));
 // Session configuration
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'default_secret', // Use a secure secret in production
+    secret: process.env.SESSION_SECRET || 'default_secret', // Use secure secret in production
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false }, // Set to true if using HTTPS
+    cookie: { secure: false }, // true if HTTPS
   })
 );
 
 // CORS configuration
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'), false);
-      }
-    },
-    methods: 'GET,POST,PUT,DELETE',
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: '*',
+  methods: 'GET,POST,PUT,DELETE',
+  credentials: true,
+}));
+
+
+// Serve static files from uploads folder
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
 
 // Define the routes
-app.use("",routes);
+app.use("", routes);
 
 // Basic route
 app.get('/', (req: Request, res: Response) => {
   res.send('Hello, TypeScript with Express!');
 });
-app.use('/uploads', express.static('uploads'));
 
 // Error-handling middleware
 app.use(errorMiddleware);
+
 // Create HTTP server
 const server = createServer(app);
+
 // Connect to database
 db.authenticate()
   .then(() => console.log('Database connected successfully!'))
   .catch(err => console.error('Database connection failed:', err));
+
 // Start the server
 server.listen(port, () => {
   console.log(`Server is running on port ${port}`);

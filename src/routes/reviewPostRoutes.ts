@@ -1,8 +1,11 @@
 import { Router } from 'express';
-import { createReviewPost, getTopReview } from '../controllers/reviewPostController';
+import { createReviewPost, getTopReview, getRecentReview, getMyReview, deleteReviewById } from '../controllers/reviewPostController';
 import { authenticate } from '../middleware/auth';
 import upload from '../middleware/multer';
 const router = Router();
 router.post('/create-review-post', authenticate, upload.single('coverUrl'), createReviewPost);
 router.get('/reviews/top', authenticate, getTopReview);
+router.get('/reviews/recent', authenticate, getRecentReview);
+router.get('/reviews/my', authenticate, getMyReview);
+router.delete('/reviews/:id', authenticate, deleteReviewById);
 export default router;

@@ -62,3 +62,43 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     return next(new ApiError('Failed to login.', ErrorCodes.INTERNAL_SERVER_ERROR.statusCode));
   }
 };
+
+
+
+interface AuthRequest extends Request {
+  user?: { id: number };
+}
+
+export const changePassword = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return next(new ApiError('Unauthorized', ErrorCodes.UNAUTHORIZED.statusCode));
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return next(new ApiError('Current and new passwords are required.', ErrorCodes.BAD_REQUEST.statusCode));
+    }
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return next(new ApiError('User not found.', ErrorCodes.NOT_FOUND.statusCode));
+    }
+    const storedPassword = user.get('password') as string;
+    const isMatch = await bcrypt.compare(currentPassword, storedPassword);
+    if (!isMatch) {
+      return next(new ApiError('Current password is incorrect.', ErrorCodes.UNAUTHORIZED.statusCode));
+    }
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    user.set('password', hashedNewPassword);
+    await user.save();
+
+    logger.info(`User changed password: userId=${userId}`);
+
+    res.status(200).json({ message: 'Password changed successfully.' });
+  } catch (error) {
+    logger.error('Change password error', { error });
+    return next(new ApiError('Failed to change password.', ErrorCodes.INTERNAL_SERVER_ERROR.statusCode));
+  }
+};

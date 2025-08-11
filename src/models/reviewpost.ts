@@ -1,7 +1,9 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/sequelize';
 
-class ReviewPost extends Model {}
+class ReviewPost extends Model {
+    [x: string]: any;
+}
 
 ReviewPost.init(
   {
